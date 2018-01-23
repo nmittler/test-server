@@ -14,12 +14,15 @@
 
 HUB=gcr.io/google.com/zbutcher-test
 
-default: test-server
+default: build
 
-test-server:
+build:
+	go build .
+
+test-server.linux:
 	GOOS=linux go build -a --ldflags '-extldflags "-static"' -tags netgo -installsuffix netgo -o test-server .
 
-docker.build: test-server
+docker.build: test-server.linux
 	docker build -t ${HUB}/test-server -f Dockerfile .
 
 docker.run: docker.build

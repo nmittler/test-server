@@ -19,46 +19,68 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 )
 
-const defaultPort uint16 = 9000
+const (
+	defaultPort uint16 = 9000
+	healthPath         = "/health"
+	echoPath           = "/echo"
+	livePath           = "/live"
+)
+
+type config struct {
+	servingPort, healthCheckPort, livenessPort uint16
+	healthy                                    bool
+	livenessDelay                              time.Duration
+}
 
 func main() {
-	var (
-		servingPort, healthCheckPort uint16
-		healthy                      bool
-	)
+	cfg := &config{}
 
 	root := &cobra.Command{
 		Use:   "server",
 		Short: "Starts Mixer as a server",
 		Run: func(cmd *cobra.Command, args []string) {
-			if servingPort == healthCheckPort {
-				http.HandleFunc("/echo", echo)
-				http.HandleFunc("/health", health(&healthy))
-				err := http.ListenAndServe(toAddress(servingPort), nil)
-				fmt.Printf("%v\n", err)
-				return
+			servers := make(map[uint16]*http.ServeMux)
+			for _, port := range []uint16{cfg.servingPort, cfg.healthCheckPort, cfg.livenessPort} {
+				if _, found := servers[port]; !found {
+					servers[port] = http.NewServeMux()
+				}
 			}
 
-			healths := http.NewServeMux()
-			healths.HandleFunc("/health", health(&healthy))
-			go func() {
-				err := http.ListenAndServe(toAddress(healthCheckPort), healths)
-				fmt.Printf("%v\n", err)
-			}()
-			echos := http.NewServeMux()
-			echos.HandleFunc("/echo", echo)
-			err := http.ListenAndServe(toAddress(servingPort), echos)
-			fmt.Printf("%v\n", err)
+			servers[cfg.servingPort].HandleFunc(echoPath, echo)
+			servers[cfg.healthCheckPort].HandleFunc(healthPath, health(cfg.healthy))
+			servers[cfg.livenessPort].HandleFunc(livePath, live(cfg.livenessDelay))
+
+			fmt.Printf("listening for:\n/echo:     %d\n/health:   %d\n/liveness: %d\n", cfg.servingPort, cfg.healthCheckPort, cfg.livenessPort)
+
+			wg := sync.WaitGroup{}
+
+			for port, server := range servers {
+				wg.Add(1)
+
+				s := server
+				go func() {
+					fmt.Printf("Starting listener on port %d\n", port)
+					err := http.ListenAndServe(toAddress(port), s)
+					fmt.Printf("%v\n", err)
+					wg.Done()
+				}()
+			}
+
+			wg.Wait()
 		},
 	}
 
-	root.PersistentFlags().Uint16VarP(&servingPort, "server-port", "s", defaultPort, "Main port to serve on; always on /echo")
-	root.PersistentFlags().Uint16VarP(&healthCheckPort, "health-port", "c", defaultPort, "Port to serve health checks on; always on /health")
-	root.PersistentFlags().BoolVar(&healthy, "healthy", true, "If false, the health check will report unhealthy")
+	root.PersistentFlags().Uint16VarP(&cfg.servingPort, "server-port", "s", defaultPort, "Main port to serve on; always on /echo")
+	root.PersistentFlags().Uint16VarP(&cfg.healthCheckPort, "health-port", "c", defaultPort, "Port to serve health checks on; always on /health")
+	root.PersistentFlags().Uint16VarP(&cfg.livenessPort, "live-port", "l", defaultPort, "Port to serve liveness checks on; always on /live")
+	root.PersistentFlags().BoolVar(&cfg.healthy, "healthy", true, "If false, the health check will report unhealthy")
+	root.PersistentFlags().DurationVar(&cfg.livenessDelay, "liveness-delay", time.Second, "Delay before the server reports being alive")
 
 	if err := root.Execute(); err != nil {
 		fmt.Printf("%v\n", err)
@@ -66,9 +88,21 @@ func main() {
 	}
 }
 
-func health(healthy *bool) func(w http.ResponseWriter, r *http.Request) {
+func live(delay time.Duration) func(w http.ResponseWriter, r *http.Request) {
+	live := time.Now().Add(delay)
+	fmt.Printf("will be live at %v given delay %v\n", live, delay)
 	return func(w http.ResponseWriter, r *http.Request) {
-		if *healthy {
+		if time.Now().After(live) {
+			w.Write([]byte("live"))
+		} else {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+	}
+}
+
+func health(healthy bool) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if healthy {
 			w.Write([]byte("healthy"))
 		} else {
 			w.WriteHeader(http.StatusServiceUnavailable)
