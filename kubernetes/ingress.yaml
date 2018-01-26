@@ -3,7 +3,7 @@ kind: Ingress
 metadata:
   name: test-server
   annotations:
-    kubernetes.io/ingress.class: istio
+    kubernetes.io/ingress.class: nginx #istio
 spec:
   rules:
   - http:

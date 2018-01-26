@@ -1,0 +1,250 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: nginx-ingress-controller
+#  annotations:
+#    deployment.kubernetes.io/revision: "10"
+#  creationTimestamp: 2018-01-29T23:53:52Z
+#  generation: 13
+#  labels:
+#    app: helm-infra-nginx-ingress
+#    chart: helm-infra-nginx-ingress-0.1.73
+#    heritage: Tiller
+#    release: helm-cmp-delivery-platform
+#  name: ingress-nginx-external-controller
+#  namespace: ingress-nginx
+#  resourceVersion: "3451983"
+#  selfLink: /apis/extensions/v1beta1/namespaces/ingress-nginx/deployments/ingress-nginx-external-controller
+#  uid: a8613581-054f-11e8-b5c2-42010a840219
+spec:
+#  replicas: 2
+#  selector:
+#    matchLabels:
+#      app: ingress-nginx-external
+#  strategy:
+#    rollingUpdate:
+#      maxSurge: 1
+#      maxUnavailable: 1
+#    type: RollingUpdate
+  template:
+    metadata:
+#      creationTimestamp: null
+      labels:
+        app: ingress-nginx-external
+#        purpose: ingress-nginx
+    spec:
+#      affinity:
+#        podAntiAffinity:
+#          requiredDuringSchedulingIgnoredDuringExecution:
+          #- labelSelector:
+#              matchExpressions:
+#              - key: app
+#                operator: In
+#                values:
+#                - ingress-nginx-external
+#            topologyKey: kubernetes.io/hostname
+      containers:
+      - args:
+        - /nginx-ingress-controller
+        - --default-backend-service=$(POD_NAMESPACE)/test-server
+#        - --configmap=$(POD_NAMESPACE)/nginx-configuration-external
+#        - --tcp-services-configmap=$(POD_NAMESPACE)/tcp-services
+#        - --udp-services-configmap=$(POD_NAMESPACE)/udp-services
+#        - --annotations-prefix=nginx.ingress.kubernetes.io
+#        - --publish-service=$(POD_NAMESPACE)/ingress-nginx-external
+#        - --ingress-class=nginx-external
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+#        image: eu.gcr.io/k8-discovery-185615/nginx-ingress-controller:4
+        image: "gcr.io/google_containers/nginx-ingress-controller:0.9.0-beta.15"
+        imagePullPolicy: Always
+#        livenessProbe:
+#          failureThreshold: 3
+#          httpGet:
+#            path: /healthz
+#            port: 10254
+#            scheme: HTTP
+#          initialDelaySeconds: 10
+#          periodSeconds: 10
+#          successThreshold: 1
+#          timeoutSeconds: 1
+        name: nginx-ingress-controller
+        ports:
+        - containerPort: 80
+          name: http-web
+          protocol: TCP
+#        - containerPort: 443
+#          name: https-web
+#          protocol: TCP
+#        readinessProbe:
+#          failureThreshold: 3
+#          httpGet:
+#            path: /healthz
+#            port: 10254
+#            scheme: HTTP
+#          periodSeconds: 10
+#          successThreshold: 1
+#          timeoutSeconds: 1
+#        resources:
+#          limits:
+#            cpu: "4"
+#            memory: 4Gi
+#          requests:
+#            cpu: "4"
+#            memory: 4Gi
+#        terminationMessagePath: /dev/termination-log
+#        terminationMessagePolicy: File
+#        volumeMounts:
+#        - mountPath: /var/log/modsec
+#          name: modsec-logs
+#      - env:
+#        - name: ES_HOSTS
+#          value: https://search.elastic.k8.atcloud.io
+#        - name: ES_USERNAME
+#          value: autotrader
+#        - name: ES_PASSWORD
+#          valueFrom:
+#            secretKeyRef:
+#              key: password
+#              name: nginx-modsec-es
+#        image: eu.gcr.io/k8-discovery-185615/docker-modsec-fluentd:4
+#        imagePullPolicy: IfNotPresent
+#        name: fluentd-modsec
+#        resources: {}
+#        terminationMessagePath: /dev/termination-log
+#        terminationMessagePolicy: File
+#        volumeMounts:
+#        - mountPath: /var/log/modsec
+#          name: modsec-logs
+#      - args:
+#        - proxy
+#        - sidecar
+#        - --configPath
+#        - /etc/istio/proxy
+#        - --binaryPath
+#        - /usr/local/bin/envoy
+#        - --serviceCluster
+#        - ingress-nginx-external-controller
+#        - --drainDuration
+#        - 2s
+#        - --parentShutdownDuration
+#        - 3s
+#        - --discoveryAddress
+#        - istio-pilot.istio-system:15003
+#        - --discoveryRefreshDelay
+#        - 1s
+#        - --zipkinAddress
+#        - zipkin.istio-system:9411
+#        - --connectTimeout
+#        - 1s
+#        - --statsdUdpAddress
+#        - istio-mixer.istio-system:9125
+#        - --proxyAdminPort
+#        - "15000"
+#        - --controlPlaneAuthPolicy
+#        - MUTUAL_TLS
+#        env:
+#        - name: POD_NAME
+#          valueFrom:
+#            fieldRef:
+#              apiVersion: v1
+#              fieldPath: metadata.name
+#        - name: POD_NAMESPACE
+#          valueFrom:
+#            fieldRef:
+#              apiVersion: v1
+#              fieldPath: metadata.namespace
+#        - name: INSTANCE_IP
+#          valueFrom:
+#            fieldRef:
+#              apiVersion: v1
+#              fieldPath: status.podIP
+#        image: docker.io/istio/proxy:0.5.0
+#        imagePullPolicy: IfNotPresent
+#        name: istio-proxy
+#        resources: {}
+#        securityContext:
+#          privileged: false
+#          readOnlyRootFilesystem: true
+#          runAsUser: 1337
+#        terminationMessagePath: /dev/termination-log
+#        terminationMessagePolicy: File
+#        volumeMounts:
+#        - mountPath: /etc/istio/proxy
+#          name: istio-envoy
+#        - mountPath: /etc/certs/
+#          name: istio-certs
+#          readOnly: true
+#      dnsPolicy: ClusterFirst
+#      initContainers:
+#      - args:
+#        - -p
+#        - "15001"
+#        - -u
+#        - "1337"
+#        - -i
+#        - 10.194.0.0/15,10.192.0.0/20
+#        image: docker.io/istio/proxy_init:0.5.0
+#        imagePullPolicy: IfNotPresent
+#        name: istio-init
+#        resources: {}
+#        securityContext:
+#          capabilities:
+#            add:
+#            - NET_ADMIN
+#          privileged: true
+#        terminationMessagePath: /dev/termination-log
+#        terminationMessagePolicy: File
+#      - args:
+#        - -c
+#        - sysctl -w kernel.core_pattern=/etc/istio/proxy/core.%e.%p.%t && ulimit -c
+#          unlimited
+#        command:
+#        - /bin/sh
+#        image: alpine
+#        imagePullPolicy: IfNotPresent
+#        name: enable-core-dump
+#        resources: {}
+#        securityContext:
+#          privileged: true
+#        terminationMessagePath: /dev/termination-log
+#        terminationMessagePolicy: File
+#      restartPolicy: Always
+#      schedulerName: default-scheduler
+#      securityContext: {}
+#      serviceAccount: nginx-ingress-serviceaccount
+#      serviceAccountName: nginx-ingress-serviceaccount
+#      terminationGracePeriodSeconds: 30
+#      volumes:
+#      - emptyDir:
+#          medium: Memory
+#        name: istio-envoy
+#      - emptyDir: {}
+#        name: modsec-logs
+#      - name: istio-certs
+#        secret:
+#          defaultMode: 420
+#          optional: true
+#          secretName: istio.nginx-ingress-serviceaccount
+#status:
+#  availableReplicas: 2
+#  conditions:
+#  - lastTransitionTime: 2018-02-06T21:22:49Z
+#    lastUpdateTime: 2018-02-06T21:22:49Z
+#    message: Deployment has minimum availability.
+#    reason: MinimumReplicasAvailable
+#    status: "True"
+#    type: Available
+#  observedGeneration: 13
+#  readyReplicas: 2
+#  replicas: 2
+#  updatedReplicas: 2

@@ -31,6 +31,7 @@ const (
 	healthPath         = "/health"
 	echoPath           = "/echo"
 	livePath           = "/live"
+	echoHeader         = "echo-value"
 )
 
 type config struct {
@@ -114,14 +115,22 @@ func health(healthy bool) func(w http.ResponseWriter, r *http.Request) {
 }
 
 func echo(w http.ResponseWriter, r *http.Request) {
-	log.Printf("got echo request with headers:         %v\n", r.Header)
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+	log.Printf("got echo request from %s with headers:         %v\n", r.RemoteAddr, r.Header)
+
+	respBody := []byte(r.Header.Get(echoHeader))
+	if len(respBody) == 0 {
+		var err error
+		respBody, err = ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
-	w.Write(body)
+	w.Write(respBody)
+	w.Write([]byte("\n"))
 }
 
 func toAddress(port uint16) string {
 	return fmt.Sprintf(":%d", port)
 }
+

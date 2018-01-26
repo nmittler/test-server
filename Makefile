@@ -12,7 +12,8 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 
-HUB := gcr.io/google.com/zbutcher-test
+#HUB=gcr.io/google.com/zbutcher-test
+HUB=gcr.io/nathanmittler-istio-test
 SHELL := /bin/bash
 
 default: build
